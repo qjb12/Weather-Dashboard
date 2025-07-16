@@ -177,29 +177,18 @@ export default function WeatherDashboard() {
       setLoading(true)
       setError(null)
       
-      console.log(`🔍 Searching for city: "${searchCity}"`)
-      
       const response = await fetch(`${API_BASE_URL}?key=${API_KEY}&q=${encodeURIComponent(searchCity)}&aqi=no`)
-      
-      console.log(`📡 API Response status: ${response.status}`)
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('❌ API Error:', errorData)
         throw new Error(errorData.error?.message || "City not found")
       }
 
       const newCityData = await response.json()
       const cityName = newCityData.location.name
 
-      console.log(`✅ Found city: "${cityName}"`)
-      console.log('📊 City data:', newCityData)
-
       // Always update weather data - remove duplicates if they exist
       setWeatherData((prev) => {
-        console.log('🔧 setWeatherData called, prev.length:', prev.length)
-        console.log('🔧 Previous cities:', prev.map(d => d.location.name))
-        
         // Remove any existing city with the same name
         const filteredData = prev.filter((data) => {
           const existingCity = data.location.name.toLowerCase().trim()
@@ -207,25 +196,17 @@ export default function WeatherDashboard() {
           return existingCity !== newCity
         })
         
-        console.log('🔧 After filtering, filteredData.length:', filteredData.length)
-        
         // Add the new city data to the beginning
-        const newData = [newCityData, ...filteredData]
-        console.log('📈 Final weather data cities:', newData.map(d => d.location.name))
-        console.log('📈 Final weather data length:', newData.length)
-        return newData
+        return [newCityData, ...filteredData]
       })
 
       setFeaturedCity(cityName)
-      console.log(`⭐ Set featured city to: "${cityName}"`)
 
       // Update background
       const isDay = newCityData.current.condition.icon.includes("day")
       const bgClass = getWeatherConditionClass(newCityData.current.condition.text, isDay)
       setBackgroundClass(bgClass)
-      console.log(`🎨 Updated background class to: ${bgClass}`)
     } catch (err) {
-      console.error('💥 Search error:', err)
       setError(err instanceof Error ? err.message : "City not found. Please try again.")
     } finally {
       setLoading(false)
@@ -245,27 +226,22 @@ export default function WeatherDashboard() {
 
   // Initial load - only run once
   useEffect(() => {
-    console.log('🚀 Initial load effect triggered')
     fetchWeatherData(DEFAULT_CITIES)
   }, []) // Remove fetchWeatherData dependency to prevent re-runs
 
-  // Auto-refresh every 10 minutes - TEMPORARILY DISABLED FOR DEBUGGING
+  // Auto-refresh every 10 minutes
   useEffect(() => {
-    console.log('🔄 Auto-refresh effect triggered, weatherData.length:', weatherData.length)
-    
-    // Temporarily disable auto-refresh to debug the search issue
-    // const interval = setInterval(
-    //   () => {
-    //     const currentCities = weatherData.map((data) => data.location.name)
-    //     if (currentCities.length > 0) {
-    //       console.log('🔄 Auto-refreshing weather data for cities:', currentCities)
-    //       fetchWeatherData(currentCities)
-    //     }
-    //   },
-    //   10 * 60 * 1000,
-    // ) // 10 minutes
+    const interval = setInterval(
+      () => {
+        const currentCities = weatherData.map((data) => data.location.name)
+        if (currentCities.length > 0) {
+          fetchWeatherData(currentCities)
+        }
+      },
+      10 * 60 * 1000,
+    ) // 10 minutes
 
-    // return () => clearInterval(interval)
+    return () => clearInterval(interval)
   }, [fetchWeatherData])
 
   if (loading && weatherData.length === 0) {
@@ -289,13 +265,6 @@ export default function WeatherDashboard() {
 
         {/* Controls */}
         <SearchControls onSearch={handleSearch} onUseLocation={getUserLocation} isLoading={loading} />
-
-        {/* Debug info - remove this later */}
-        <div className="bg-black/20 text-white p-4 rounded-lg mb-4 text-sm">
-          <p><strong>Featured City:</strong> "{featuredCity}"</p>
-          <p><strong>Weather Data Count:</strong> {weatherData.length}</p>
-          <p><strong>Cities:</strong> {weatherData.map(d => d.location.name).join(", ")}</p>
-        </div>
 
         {/* Quick City Buttons */}
         <QuickCityButtons cities={DEFAULT_CITIES} featuredCity={featuredCity} onCitySelect={handleCitySelect} />
@@ -321,11 +290,6 @@ export default function WeatherDashboard() {
               const isFeatured = cityName === featured || 
                                 cityName.includes(featured) || 
                                 featured.includes(cityName)
-              
-              // Debug logging for featured city matching
-              if (cityName === featured) {
-                console.log(`🎯 Exact match found: "${data.location.name}" === "${featuredCity}"`)
-              }
 
               return (
                 <WeatherCard
